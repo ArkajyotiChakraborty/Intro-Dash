@@ -1,84 +1,96 @@
 import pandas as pd
 import dash
+
+from dash.dependencies import Input, Output
 import dash_core_components as dcc
 import dash_html_components as html
-from dash.dependencies import Input, Output
+import dash_bootstrap_components as dbc
 import plotly.express as px
 
+df = pd.read_excel("Month_data.xlsx")
+df3 = pd.read_excel("Dash_Data.xlsx")
+df2 = pd.DataFrame({
+    "Activity": ["Walking", "Sleeping", "Sitting", "Eating"],
+    "Amount": [2, 7, 8, 3]
+})
+df4 = pd.DataFrame({
+    "Activity": ["Walking", "Sleeping","Sitting","Eating","Miscelle"],
+    "Amount": [9,48,40,1,2]
+})
+fig = px.line(df3, x='Week', y='Hours')
+fig1 = px.line(df3, x='Month', y='Hours')
+fig2 = px.bar(df2, x="Activity", y="Amount")
+fig4 = px.pie(df4, values='Amount', names='Activity')
+value1 = ''
+months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 app = dash.Dash(__name__)
 
-#Importing and cleaning of the data:
-df = pd.read_csv("data.csv")
-df = df.groupby(['State', 'ANSI', 'Affected by', 'Year', 'state_code'])[['Pct of Colonies Impacted']].mean()
-df.reset_index(inplace=True)
-print(df[:5])
-# App layout:
+activity = df3['ActivityName'].unique()
 app.layout = html.Div([
-    html.H1("Welcome to Dashboard made using Dash", style = {'text-align': 'center'}),
-dcc.Dropdown(id="slct_year",
-                 options=[
-                     {"label": "2015", "value": 2015},
-                     {"label": "2016", "value": 2016},
-                     {"label": "2017", "value": 2017},
-                     {"label": "2018", "value": 2018}],
-                 multi=False,
-                 value=2015,
-                 style={'width': "40%"}
-                 ),
+    html.Div([html.H1(children='Activity Log')
 
-    html.Div(id='output_container', children=[]),
-    html.Br(),
+              ], style={'text-align': 'center'}),
 
-    dcc.Graph(id='my_bee_map', figure={})
-])
-# Connecting the graphs with the dash components:
-@app.callback(
-    [Output(component_id='output_container', component_property='children'),
-     Output(component_id='my_bee_map', component_property='figure')],
-    [Input(component_id='slct_year', component_property='value')]
-)
-def update_graph(option_slctd):
-    print(option_slctd)
-    print(type(option_slctd))
-
-    container = "The year chosen by user was: {}".format(option_slctd)
-
-    dff = df.copy()
-    dff = dff[dff["Year"] == option_slctd]
-    dff = dff[dff["Affected by"] == "Varroa_mites"]
-
-    # Plotly Express
-    fig = px.choropleth(
-        data_frame=dff,
-        locationmode='USA-states',
-        locations='state_code',
-        scope="usa",
-        color='Pct of Colonies Impacted',
-        hover_data=['State', 'Pct of Colonies Impacted'],
-        color_continuous_scale=px.colors.sequential.YlOrRd,
-        labels={'Pct of Colonies Impacted': '% of Bee Colonies'},
-        template='plotly_dark'
+    html.H3(children='''
+         Average Sitting Time: 7 to 10 hours
+    '''),
+    html.H3(children='''
+         Average Walking Time: 1 to 2 hours'''),
+    html.H3(children='''
+     Average Sleeping Time: 7 to 8 hours'''),
+    html.Div([dcc.Dropdown(
+        id='activity-select',
+        options=[{'label': i, 'value': i} for i in activity],
+        value='Fertility rate, total (births per woman)'
+    ),
+    ], style={'width': '49%'}),
+    html.Div([dcc.Dropdown(
+        id='week-select',
+        options=[{'label': i, 'value': i} for i in months],
+        value='Fertility rate, total (births per woman)'
+    )], style={'width': '49%'}),
+    html.Div([dcc.Graph(
+        id="time-series-chart",
+        figure=fig
     )
+    ], style={'width': '49%', 'display': 'inline-block', 'padding': '0 20', 'background': 'grey'}),
+    html.Div([dcc.Graph(
+        id="example-graph",
+        figure=fig1
+    )], style={'width': '49%', 'display': 'inline-block', 'padding': '0 20', 'background': 'grey'}),
+    html.Div([
+        dcc.Graph(
+            id="bar-graph",
+            figure=fig2
+        )
+    ], style={'width': '49%', 'display': 'inline-block', 'padding': '0 20', 'background': 'grey'}),
+    html.Div([
+        dcc.Graph(
+            id = "pie-graph",
+            figure =fig4
+        )
+    ], style={'width': '49%', 'display': 'inline-block', 'padding': '0 20', 'background': 'grey'})
+], style={'background': '#ececec'})
 
-    # Plotly Graph Objects (GO)
-    # fig = go.Figure(
-    #     data=[go.Choropleth(
-    #         locationmode='USA-states',
-    #         locations=dff['state_code'],
-    #         z=dff["Pct of Colonies Impacted"].astype(float),
-    #         colorscale='Reds',
-    #     )]
-    # )
-    #
-    # fig.update_layout(
-    #     title_text="Bees Affected by Mites in the USA",
-    #     title_xanchor="center",
-    #     title_font=dict(size=24),
-    #     title_x=0.5,
-    #     geo=dict(scope='usa'),
-    # )
 
-    return container, fig
+@app.callback(
+    Output('example-graph', 'figure'),
+    Input('activity-select', 'value')
+)
+def update_output(value):
+    global value1
+    value1 = value
+    return px.line(df[df['ActivityName'] == value], x='Month', y='Hours')
+
+
+@app.callback(
+    Output('time-series-chart', 'figure'),
+    Input('week-select', 'value')
+)
+def update_output1(value):
+    global value1
+    return px.line(df3[df3['ActivityName'] == value1][df3['Month'] == value], x='Week', y='Hours')
+
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
